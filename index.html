@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Fibra de Carbono | Engenharia de Alta Performance</title>
+    <!-- Google Fonts + Tailwind + AOS + Font Awesome + Chart.js + Three.js -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Custom CSS extra -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background 0.3s, color 0.2s;
+            overflow-x: hidden;
+        }
+
+        /* Tema escuro (padrão) e claro */
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --card-bg: rgba(20, 20, 30, 0.8);
+            --text-primary: #f0f0f0;
+            --text-secondary: #b0b0b0;
+            --neon: #00e5ff;
+            --neon-glow: 0 0 8px #00e5ff66;
+            --carbon-texture: repeating-linear-gradient(45deg, #1a1a1a 0px, #1a1a1a 2px, #222 2px, #222 6px);
+        }
+
+        body.light-mode {
+            --bg-primary: #f4f7fc;
+            --bg-secondary: #ffffff;
+            --card-bg: rgba(255,255,240,0.9);
+            --text-primary: #111;
+            --text-secondary: #333;
+            --neon: #0088cc;
+            --neon-glow: 0 0 5px #0088cc66;
+            --carbon-texture: repeating-linear-gradient(45deg, #e0e0e0 0px, #e0e0e0 2px, #ececec 2px, #ececec 6px);
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        /* fundo textura carbono */
+        .carbon-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: var(--carbon-texture);
+            opacity: 0.08;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .neon-border {
+            box-shadow: 0 0 0 1px var(--neon), var(--neon-glow);
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border-radius: 24px;
+            border: 1px solid rgba(0, 229, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            border-color: var(--neon);
+            box-shadow: 0 8px 20px rgba(0, 229, 255, 0.2);
+            transform: translateY(-5px);
+        }
+
+        .btn-neon {
+            background: transparent;
+            border: 1.5px solid var(--neon);
+            color: var(--neon);
+            transition: 0.3s;
+        }
+        .btn-neon:hover {
+            background: var(--neon);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon);
+        }
+
+        /* linha do tempo */
+        .timeline-item {
+            position: relative;
+            padding-left: 30px;
+            margin-bottom: 30px;
+            border-left: 2px solid var(--neon);
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -9px;
+            top: 0;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--neon);
+            box-shadow: 0 0 12px var(--neon);
+        }
+
+        /* animação fade-up */
+        [data-aos] {
+            transition-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        /* loader */
+        .loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 1s;
+        }
+        .loader .spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid #222;
+            border-top: 5px solid var(--neon);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* modal */
+        .modal {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+            z-index: 9998;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            visibility: hidden;
+            opacity: 0;
+            transition: all 0.3s;
+        }
+        .modal.active {
+            visibility: visible;
+            opacity: 1;
+        }
+        .modal-content {
+            max-width: 500px;
+            background: var(--bg-secondary);
+            border-radius: 32px;
+            padding: 24px;
+            border: 1px solid var(--neon);
+        }
+
+        /* canvas 3d */
+        #three-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* scroll suave */
+        html {
+            scroll-behavior: smooth;
+        }
+        /* custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: var(--neon); border-radius: 6px; }
+    </style>
+</head>
+<body class="antialiased">
+    <div id="loader" class="loader">
+        <div class="spinner"></div>
+    </div>
+    <div class="carbon-bg"></div>
+    <canvas id="three-canvas"></canvas>
+
+    <!-- FIXED MENU -->
+    <nav class="fixed top-0 left-0 w-full z-50 bg-black/70 backdrop-blur-lg border-b border-white/10 py-3 px-6 flex justify-between items-center">
+        <div class="text-2xl font-bold tracking-tighter"><span class="text-[#00e5ff]">CARBON</span>LAB</div>
+        <div class="hidden md:flex space-x-6 text-sm font-medium">
+            <a href="#hero" class="hover:text-[#00e5ff] transition">Início</a>
+            <a href="#sobre" class="hover:text-[#00e5ff] transition">Definição</a>
+            <a href="#estrutura" class="hover:text-[#00e5ff] transition">Estrutura</a>
+            <a href="#quimica" class="hover:text-[#00e5ff] transition">Química</a>
+            <a href="#fabricacao" class="hover:text-[#00e5ff] transition">Fabricação</a>
+            <a href="#propriedades" class="hover:text-[#00e5ff] transition">Propriedades</a>
+            <a href="#aplicacoes" class="hover:text-[#00e5ff] transition">Aplicações</a>
+        </div>
+        <div class="flex items-center gap-4">
+            <button id="darkModeToggle" class="text-2xl"><i class="fas fa-moon"></i></button>
+            <i class="fas fa-bars md:hidden text-2xl cursor-pointer" id="menuMobile"></i>
+        </div>
+    </nav>
+    <div id="mobileMenu" class="fixed top-16 left-0 w-full bg-black/90 backdrop-blur-md z-40 hidden flex-col items-center py-6 space-y-4 text-lg">
+        <a href="#hero">Início</a><a href="#sobre">Definição</a><a href="#estrutura">Estrutura</a><a href="#quimica">Química</a>
+        <a href="#fabricacao">Fabricação</a><a href="#propriedades">Propriedades</a><a href="#aplicacoes">Aplicações</a>
+    </div>
+
+    <main class="relative z-10">
+        <!-- HERO -->
+        <section id="hero" class="min-h-screen flex items-center justify-center relative overflow-hidden px-6">
+            <div class="hero-content text-center max-w-5xl mx-auto" data-aos="fade-up" data-aos-duration="1000">
+                <h1 class="text-5xl md:text-7xl font-extrabold bg-gradient-to-r from-white via-[#00e5ff] to-white bg-clip-text text-transparent leading-tight">Fibra de Carbono e <br>Engenharia de Alta Performance</h1>
+                <p class="text-xl md:text-2xl text-gray-300 mt-6 max-w-2xl mx-auto">Como a química molecular revolucionou os materiais da engenharia moderna.</p>
+                <a href="#sobre" class="inline-block mt-10 px-8 py-4 rounded-full btn-neon text-lg font-semibold transition">Explorar Projeto <i class="fas fa-arrow-right ml-2"></i></a>
+            </div>
+            <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce"><i class="fas fa-chevron-down text-3xl text-[#00e5ff]"></i></div>
+        </section>
+
+        <!-- Seção O que é Fibra de Carbono + Linha do tempo -->
+        <section id="sobre" class="py-20 px-6 max-w-7xl mx-auto">
+            <div data-aos="fade-right"><h2 class="text-4xl font-bold mb-4 border-l-8 border-[#00e5ff] pl-4">O que é Fibra de Carbono?</h2></div>
+            <div class="grid md:grid-cols-2 gap-12 mt-8">
+                <div data-aos="fade-up"><p class="text-gray-300 leading-relaxed">A fibra de carbono é um material compósito formado por filamentos extremamente finos de átomos de carbono, com diâmetro entre 5–10 micrômetros. É cinco vezes mais resistente que o aço, com apenas um quinto do peso. Sua história remonta ao século XIX, mas o desenvolvimento moderno se deu na década de 1960 pela Union Carbide.</p>
+                <p class="mt-4 text-gray-300">Evolução: 1958 – Primeiras fibras de rayon; 1963 – Fibra de alto módulo (PAN); 1970 – Expansão na indústria aeroespacial; anos 80 – Aplicações na F1; atualmente - manufatura automatizada.</p></div>
+                <div class="glass-card p-6" data-aos="flip-left"><h3 class="text-2xl font-semibold mb-4"><i class="fas fa-history text-[#00e5ff] mr-2"></i>Linha do Tempo</h3>
+                    <div class="timeline">
+                        <div class="timeline-item"><span class="font-bold text-[#00e5ff]">1958</span> - Primeira fibra de carbono (Union Carbide)</div>
+                        <div class="timeline-item"><span class="font-bold text-[#00e5ff]">1963</span> - Processo PAN (Japão/UK)</div>
+                        <div class="timeline-item"><span class="font-bold text-[#00e5ff]">1980</span> - Uso em chassis de F1</div>
+                        <div class="timeline-item"><span class="font-bold text-[#00e5ff]">2010+</span> - Indústria 4.0 + reciclagem</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Estrutura do Material -->
+        <section id="estrutura" class="py-20 px-6 bg-[#0f0f12]/70">
+            <div class="max-w-7xl mx-auto">
+                <h2 class="text-4xl font-bold mb-12 text-center" data-aos="zoom-in">Estrutura do <span class="text-[#00e5ff]">Material Compósito</span></h2>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="glass-card p-6 text-center" data-aos="flip-right"><i class="fas fa-layer-group text-5xl text-[#00e5ff] mb-4"></i><h3 class="text-2xl mb-2">Reforço (Fibras)</h3><p>Fibras de carbono orientadas que suportam a carga mecânica. Proporcionam rigidez e resistência tração.</p></div>
+                    <div class="glass-card p-6 text-center" data-aos="flip-left"><i class="fas fa-flask text-5xl text-[#00e5ff] mb-4"></i><h3 class="text-2xl mb-2">Matriz (Resina Epóxi)</h3><p>Polímero termofixo que une fibras, transfere tensões e protege contra corrosão.</p></div>
+                </div>
+                <div class="mt-12 flex justify-center" data-aos="fade-up"><div class="relative w-80 h-80 bg-gradient-to-b from-gray-800 to-black rounded-full flex items-center justify-center border border-cyan-500/50"><div class="text-center"><i class="fas fa-microscope text-6xl text-cyan-400"></i><p class="mt-2">Camadas cruzadas [0°/90°]</p></div></div></div>
+            </div>
+        </section>
+
+        <!-- Química Molecular -->
+        <section id="quimica" class="py-20 px-6 max-w-7xl mx-auto">
+            <h2 class="text-4xl font-bold mb-8 text-center" data-aos="fade-down">🧪 Química Molecular da Fibra de Carbono</h2>
+            <div class="grid lg:grid-cols-3 gap-6">
+                <div class="glass-card p-5"><i class="fas fa-atom text-3xl text-[#00e5ff]"></i><h3 class="text-xl font-bold mt-2">Ligações Covalentes sp²</h3><p class="text-sm">Átomos de carbono com hibridização sp² formam planos hexagonais, garantindo alta rigidez.</p></div>
+                <div class="glass-card p-5"><i class="fas fa-chart-line text-3xl text-[#00e5ff]"></i><h3 class="text-xl font-bold mt-2">Grafeno / Grafite</h3><p class="text-sm">Camadas ordenadas de grafeno originam alta resistência axial e condutividade.</p></div>
+                <div class="glass-card p-5"><i class="fas fa-fire text-3xl text-[#00e5ff]"></i><h3 class="text-xl font-bold mt-2">Pirólise</h3><p class="text-sm">Carbonização a 1500°C elimina não-carbonos, alinhando cristalitos de carbono.</p></div>
+            </div>
+            <div class="mt-12 glass-card p-6 text-center" data-aos="zoom-in-up"><i class="fas fa-vial text-3xl mr-2"></i> Reticulação da resina epóxi: endurecimento químico com aminas, criando polímero tridimensional.</div>
+        </section>
+
+        <!-- Processo Fabricação cards e fluxograma -->
+        <section id="fabricacao" class="py-20 px-6 bg-[#05050a]">
+            <div class="max-w-7xl mx-auto">
+                <h2 class="text-4xl font-bold mb-8 text-center">⚙️ Processo de Fabricação Avançado</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="glass-card p-5 text-center hover:scale-105 transition"><i class="fas fa-industry text-4xl text-[#00e5ff]"></i><h3 class="font-bold mt-2">Produção da fibra</h3><p class="text-sm">Poliacrilonitrila (PAN) > oxidação > carbonização</p></div>
+                    <div class="glass-card p-5 text-center"><i class="fas fa-hand-fist text-4xl text-[#00e5ff]"></i><h3>Laminação manual</h3><p class="text-sm">Deposição de prepregs em moldes</p></div>
+                    <div class="glass-card p-5 text-center"><i class="fas fa-temperature-high text-4xl text-[#00e5ff]"></i><h3>Cura autoclave</h3><p class="text-sm">Pressão + temperatura (180°C, 7bar)</p></div>
+                    <div class="glass-card p-5 text-center"><i class="fas fa-robot text-4xl text-[#00e5ff]"></i><h3>AFP automática</h3><p class="text-sm">Robôs depositam fitas com precisão milimétrica</p></div>
+                </div>
+                <div class="mt-12 flex flex-wrap justify-center gap-4 text-center text-sm"><span class="bg-gray-800 px-4 py-2 rounded-full">Fibra Precursora → Oxidação → Carbonização → Tratamento superficial → Resina Epóxi → Laminação → Cura → Acabamento</span></div>
+            </div>
+        </section>
+
+        <!-- Propriedades Mecânicas: gráfico + contadores -->
+        <section id="propriedades" class="py-20 px-6 max-w-7xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-8">📊 Propriedades Mecânicas</h2>
+            <div class="grid lg:grid-cols-2 gap-8">
+                <div class="glass-card p-5" data-aos="fade-right">
+                    <canvas id="comparisonChart" width="400" height="300" style="max-height: 300px;"></canvas>
+                </div>
+                <div class="space-y-6" data-aos="fade-left">
+                    <div class="glass-card p-4 text-center"><div class="text-4xl font-bold text-[#00e5ff]"><span id="counter1">0</span>x</div><p>Mais resistente que o aço (tração)</p></div>
+                    <div class="glass-card p-4 text-center"><div class="text-4xl font-bold text-[#00e5ff]"><span id="counter2">0</span> g/cm³</div><p>Densidade ultrabaixa</p></div>
+                    <div class="glass-card p-4 text-center"><div class="text-4xl font-bold text-[#00e5ff]"><span id="counter3">0</span>%</div><p>Corrosão eletroquímica</p></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Aplicações Reais com modais -->
+        <section id="aplicacoes" class="py-20 px-6 bg-[#0a0a10]">
+            <div class="max-w-7xl mx-auto">
+                <h2 class="text-4xl font-bold mb-12 text-center">🚀 Aplicações de Alta Performance</h2>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div class="card-app glass-card p-4 text-center cursor-pointer" data-modal="f1"><i class="fas fa-car text-4xl text-[#00e5ff]"></i><p>F1</p></div>
+                    <div class="card-app glass-card p-4 text-center cursor-pointer" data-modal="aero"><i class="fas fa-plane text-4xl"></i><p>Aeronáutica</p></div>
+                    <div class="card-app glass-card p-4 text-center cursor-pointer" data-modal="space"><i class="fas fa-rocket text-4xl"></i><p>Aeroespacial</p></div>
+                    <div class="card-app glass-card p-4 text-center cursor-pointer" data-modal="sports"><i class="fas fa-bicycle text-4xl"></i><p>Esportes</p></div>
+                    <div class="card-app glass-card p-4 text-center cursor-pointer" data-modal="prost"><i class="fas fa-procedures text-4xl"></i><p>Próteses</p></div>
+                    <div class="card-app glass-card p-4 text-center cursor-pointer" data-modal="indust"><i class="fas fa-hard-hat text-4xl"></i><p>Industrial</p></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Curiosidades + Sustentabilidade + Conclusão -->
+        <section class="py-20 px-6 max-w-6xl mx-auto">
+            <div class="grid md:grid-cols-2 gap-12">
+                <div class="glass-card p-6" data-aos="flip-left"><h3><i class="fas fa-lightbulb"></i> Curiosidades</h3><ul class="list-disc pl-5 mt-3 space-y-2"><li>Custo médio: US$ 20-50/kg, alto devido pirólise e energia</li><li>80% produção: Japão (Toray, Teijin) e EUA</li><li>Usada no chassi do Bugatti Veyron e Boeing 787</li><li>Recorde: resistência 7 GPa em fibras especiais</li></ul></div>
+                <div class="glass-card p-6" data-aos="flip-right"><h3><i class="fas fa-recycle"></i> Sustentabilidade & Reciclagem</h3><p>Pirólise para recuperar fibras, pesquisa em resinas vitriméricas e fibras recicladas com 90% de propriedades originais. MIT desenvolve novas rotas verdes.</p></div>
+            </div>
+            <div class="mt-16 text-center" data-aos="zoom-in"><h2 class="text-5xl font-bold mb-4">O Macro Depende do Micro</h2><p class="text-xl max-w-3xl mx-auto">Ligações moleculares e hibridização sp² definem o desempenho de carros, aviões e equipamentos. Da química à engenharia, a fibra de carbono redefiniu limites.</p></div>
+        </section>
+
+        <!-- Área Acadêmica Projeto Integrador -->
+        <section id="academico" class="py-20 px-6 bg-[#0c0c12]">
+            <div class="max-w-5xl mx-auto"><h2 class="text-3xl font-bold mb-6 text-center">📘 Projeto Integrador - Engenharia de Materiais</h2>
+                <div class="grid md:grid-cols-2 gap-6"><div class="glass-card p-5"><i class="fas fa-bullseye text-2xl"></i><h3 class="text-xl">Objetivo</h3><p>Analisar o impacto da fibra de carbono em estruturas aeroespaciais e automobilísticas.</p></div>
+                <div class="glass-card p-5"><i class="fas fa-microscope"></i><h3 class="text-xl">Metodologia</h3><p>Revisão bibliográfica, simulações em ANSYS e comparação com materiais tradicionais.</p></div>
+                <div class="glass-card p-5"><i class="fas fa-book"></i><h3 class="text-xl">Fundamentação</h3><p>Teoria de compósitos, mecânica da fratura, química de polímeros.</p></div>
+                <div class="glass-card p-5"><i class="fas fa-chart-bar"></i><h3 class="text-xl">Resultados</h3><p>Redução de 50% de peso, aumento de rigidez específica 4x, viabilidade técnica comprovada.</p></div>
+                <div class="glass-card p-5 md:col-span-2"><i class="fas fa-check-circle"></i><h3 class="text-xl">Conclusão</h3><p>Material indispensável para engenharia de ponta, ainda com desafios de reciclagem e custo.</p></div></div>
+            </div>
+        </section>
+
+        <!-- Galeria + Vídeo Incorporado + FAQ + Contato -->
+        <section class="py-20 px-6 max-w-7xl mx-auto">
+            <h2 class="text-3xl font-bold text-center mb-8">🎥 Galeria & Vídeos</h2>
+            <div class="grid sm:grid-cols-3 gap-4 mb-12">
+                <img src="https://picsum.photos/id/0/400/250" class="rounded-xl border border-cyan-500/30 hover:scale-105 transition" alt="fibra">
+                <img src="https://picsum.photos/id/20/400/250" class="rounded-xl border border-cyan-500/30" alt="chassi">
+                <img src="https://picsum.photos/id/30/400/250" class="rounded-xl border border-cyan-500/30" alt="aero">
+            </div>
+
+            <div class="mt-16 grid md:grid-cols-2 gap-12">
+                <div><h3 class="text-2xl font-bold mb-6"><i class="fas fa-question-circle"></i> FAQ Interativo</h3><div class="space-y-3"><div class="glass-card p-3 cursor-pointer" onclick="this.nextElementSibling.classList.toggle('hidden')"><b>💰 Por que é tão cara?</b><i class="fas fa-chevron-down float-right"></i><div class="hidden mt-2 text-sm">Processo energético (carbonização) e matéria-prima especializada.</div></div><div class="glass-card p-3 cursor-pointer"><b>🔁 Pode ser reciclada?</b><i class="fas fa-chevron-down float-right"></i><div class="hidden mt-2">Sim, por pirólise ou solvólise, recuperando 90% da resistência.</div></div></div></div>
+                <div><h3 class="text-2xl font-bold mb-4"><i class="fas fa-users"></i> Grupo</h3><div class="glass-card p-6 bg-[#111] rounded-3xl">
+                    <p class="text-lg font-semibold">Matheus Santana</p>
+                    <p class="text-lg font-semibold">Anthony Gabriel da Silva</p>
+                    <p class="text-lg font-semibold">Maycon Bueno Pereira</p>
+                </div></div>
+            </div>
+        </section>
+    </main>
+
+    <button id="backTop" class="fixed bottom-6 right-6 bg-[#00e5ff] text-black w-12 h-12 rounded-full shadow-lg hidden items-center justify-center text-xl"><i class="fas fa-arrow-up"></i></button>
+
+    <!-- Modals dinâmicos -->
+    <div id="modal" class="modal"><div class="modal-content"><span id="modalTitle" class="text-2xl font-bold"></span><p id="modalDesc" class="mt-3"></p><button class="mt-4 btn-neon px-4 py-1 rounded" onclick="closeModal()">Fechar</button></div></div>
+
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        AOS.init({ duration: 800, once: false, mirror: false });
+
+        // Loader
+        window.addEventListener('load', () => { document.getElementById('loader').style.opacity = '0'; setTimeout(() => { document.getElementById('loader').style.display = 'none'; }, 800); });
+
+        // Dark mode
+        const toggle = document.getElementById('darkModeToggle');
+        toggle.addEventListener('click', () => { document.body.classList.toggle('light-mode'); localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light' : 'dark'); });
+        if (localStorage.getItem('theme') === 'light') document.body.classList.add('light-mode');
+
+        // Mobile menu
+        const mobBtn = document.getElementById('menuMobile'), mobMenu = document.getElementById('mobileMenu');
+        mobBtn?.addEventListener('click', () => mobMenu.classList.toggle('hidden'));
+
+        // chart
+        const ctx = document.getElementById('comparisonChart').getContext('2d');
+        new Chart(ctx, { type: 'bar', data: { labels: ['Resistência Tração (MPa)', 'Densidade (g/cm³) *escala', 'Rigidez Específica'], datasets: [{ label: 'Fibra Carbono', data: [3500, 1.8, 200], backgroundColor: '#00e5ff' }, { label: 'Aço', data: [600, 7.8, 25], backgroundColor: '#aaa' }, { label: 'Alumínio', data: [310, 2.7, 38], backgroundColor: '#ddd' }] }, options: { responsive: true, plugins: { legend: { labels: { color: '#fff' } } } } });
+
+        // Contadores animados
+        function animateNumber(el, target, suffix='') { let current = 0; const step = target / 60; const timer = setInterval(() => { current += step; if (current >= target) { el.innerText = target + suffix; clearInterval(timer); } else el.innerText = Math.floor(current) + suffix; }, 25); }
+        const observer = new IntersectionObserver((entries) => { entries.forEach(e => { if (e.isIntersecting) { if (e.target.id === 'counter1') animateNumber(e.target, 5, 'x'); if (e.target.id === 'counter2') animateNumber(e.target, 1.8, ' g/cm³'); if (e.target.id === 'counter3') animateNumber(e.target, 0, '%'); observer.unobserve(e.target); } }); }, { threshold: 0.5 });
+        observer.observe(document.getElementById('counter1')); observer.observe(document.getElementById('counter2')); observer.observe(document.getElementById('counter3'));
+
+        // Modal Aplicações
+        const modalsMap = { f1: 'Fórmula 1: Monocoque, asas, suspensão — leveza e rigidez máxima.', aero: 'Boeing 787: 50% da estrutura em compósitos de carbono, redução de combustível.', space: 'Foguetes: Carenagem, tanques de pressão, satélites.', sports: 'Bicicletas, raquetes, capacetes — transferência de energia otimizada.', prost: 'Próteses de carbono: leves, resistentes e biocompatíveis.', industri: 'Pás eólicas, braços robóticos, alta performance dinâmica.' };
+        document.querySelectorAll('.card-app').forEach(card => { card.addEventListener('click', () => { const id = card.getAttribute('data-modal'); document.getElementById('modalTitle').innerText = id.toUpperCase(); document.getElementById('modalDesc').innerHTML = modalsMap[id] || 'Aplicação de ponta em engenharia.'; document.getElementById('modal').classList.add('active'); }); });
+        window.closeModal = () => document.getElementById('modal').classList.remove('active');
+
+        // Back to top
+        const backTop = document.getElementById('backTop'); window.addEventListener('scroll', () => { backTop.style.display = window.scrollY > 500 ? 'flex' : 'none'; }); backTop.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+        document.getElementById('contactForm')?.addEventListener('submit', (e) => { e.preventDefault(); document.getElementById('formMsg').innerText = 'Mensagem enviada (simulação).'; });
+
+        // THREE.JS partículas estilo fibra carbono
+        const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000); const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), alpha: true }); renderer.setSize(window.innerWidth, window.innerHeight); const particlesGeo = new THREE.BufferGeometry(); const particleCount = 1300; const posArray = new Float32Array(particleCount * 3); for (let i = 0; i < particleCount; i++) { posArray[i*3] = (Math.random() - 0.5) * 200; posArray[i*3+1] = (Math.random() - 0.5) * 100; posArray[i*3+2] = (Math.random() - 0.5) * 100 - 50; } particlesGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3)); const particleMat = new THREE.PointsMaterial({ color: 0x00e5ff, size: 0.2, transparent: true, opacity: 0.6 }); const particles = new THREE.Points(particlesGeo, particleMat); scene.add(particles); camera.position.z = 70; function animateParticles() { requestAnimationFrame(animateParticles); particles.rotation.y += 0.002; particles.rotation.x += 0.0005; renderer.render(scene, camera); } animateParticles(); window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+
+        // FAQ toggle
+        document.querySelectorAll('.glass-card.cursor-pointer').forEach(el => { el.addEventListener('click', function(e) { if(e.target.tagName!=='I') this.querySelector('.hidden')?.classList.toggle('hidden'); }); });
+    </script>
+</body>
+</html>
